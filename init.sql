@@ -1,0 +1,4 @@
+---DROP DATABASE IF EXISTS service_db; 
+CREATE DATABASE IF NOT EXISTS service_db
+    DEFAULT CHARACTER SET = 'utf8mb4';
+GRANT ALL PRIVILEGES ON service_db.* TO 'stud'@'%';

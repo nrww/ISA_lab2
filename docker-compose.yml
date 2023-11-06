@@ -8,7 +8,7 @@ services:
     container_name: db-node
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: archdb
+      MYSQL_DATABASE: service_db
       MYSQL_USER: stud
       MYSQL_PASSWORD: stud
       MYSQL_ROOT_PASSWORD: '1'
@@ -16,6 +16,8 @@ services:
       --sql-mode='STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'
       --general-log=ON
       --log-queries-not-using-indexes=ON
+      --init-file /data/application/init.sql
+      --character-set-server=utf8mb4
     networks:
       - arch-network
     ports:
@@ -27,6 +29,7 @@ services:
       retries: 5
     volumes:
       - db-node-data:/var/lib/mysql
+      - ./init.sql:/data/application/init.sql
 
   user_service:
     build:
@@ -38,12 +41,12 @@ services:
       - DB_PORT=3306
       - DB_LOGIN=stud
       - DB_PASSWORD=stud
-      - DB_DATABASE=archdb
+      - DB_DATABASE=service_db
     ports:
       - 8081:8081
     healthcheck:
-      test: curl -sS http://127.0.0.1:8081 || exit 1
-      interval: 5s
+      test: curl -sS http://localhost:8081/ || exit 1
+      interval: 15s
       timeout: 10s
       retries: 3
     networks:
@@ -62,12 +65,12 @@ services:
       - DB_PORT=3306
       - DB_LOGIN=stud
       - DB_PASSWORD=stud
-      - DB_DATABASE=archdb
+      - DB_DATABASE=service_db
     ports:
       - 8082:8082
     healthcheck:
-      test: curl -sS http://127.0.0.1:8082 || exit 1
-      interval: 5s
+      test: curl -sS http://localhost:8082/ || exit 1
+      interval: 15s
       timeout: 10s
       retries: 3
     networks:
@@ -76,6 +79,62 @@ services:
       db-node:
         condition: service_healthy
       user_service:
+        condition: service_healthy
+
+  order_service:
+    build:
+      context: order_service
+      dockerfile: Dockerfile
+    container_name: order_service
+    environment:
+      - DB_HOST=db-node
+      - DB_PORT=3306
+      - DB_LOGIN=stud
+      - DB_PASSWORD=stud
+      - DB_DATABASE=service_db
+    ports:
+      - 8083:8083
+    healthcheck:
+      test: curl -sS http://localhost:8083/ || exit 1
+      interval: 15s
+      timeout: 10s
+      retries: 3
+    networks:
+      - arch-network
+    depends_on:
+      db-node:
+        condition: service_healthy
+      user_service:
+        condition: service_healthy
+      services_service:
+        condition: service_healthy
+
+  chat_service:
+    build:
+      context: chat_service
+      dockerfile: Dockerfile
+    container_name: chat_service
+    environment:
+      - DB_HOST=db-node
+      - DB_PORT=3306
+      - DB_LOGIN=stud
+      - DB_PASSWORD=stud
+      - DB_DATABASE=service_db
+    ports:
+      - 8084:8084
+    healthcheck:
+      test: curl -sS http://localhost:8084/ || exit 1
+      interval: 15s
+      timeout: 10s
+      retries: 3
+    networks:
+      - arch-network
+    depends_on:
+      db-node:
+        condition: service_healthy
+      user_service:
+        condition: service_healthy
+      order_service:
         condition: service_healthy
 volumes:
   db-node-data:
