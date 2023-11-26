@@ -1,11 +1,11 @@
 version: '2.1'
 
 services:
-  db-node:
+  db-node-1:
     build:
       context: mariadb
       dockerfile: Dockerfile
-    container_name: db-node
+    container_name: db-node-1
     restart: unless-stopped
     environment:
       MYSQL_DATABASE: service_db
@@ -28,8 +28,65 @@ services:
       timeout: 1s
       retries: 5
     volumes:
-      - db-node-data:/var/lib/mysql
+      - db-node-1-data:/var/lib/mysql
       - ./init.sql:/data/application/init.sql
+
+  db-node-2:
+    build:
+      context: mariadb
+      dockerfile: Dockerfile
+    container_name: db-node-2
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: service_db
+      MYSQL_USER: stud
+      MYSQL_PASSWORD: stud
+      MYSQL_ROOT_PASSWORD: '1'
+    command: >
+      --sql-mode='STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'
+      --general-log=ON
+      --log-queries-not-using-indexes=ON
+      --init-file /data/application/init.sql
+      --character-set-server=utf8mb4
+    networks:
+      - arch-network
+    ports:
+      - 3360:3306
+    healthcheck:
+      test: "/usr/bin/mariadb --user=stud --password=stud --execute \"SHOW DATABASES;\""
+      interval: 15s
+      timeout: 1s
+      retries: 5
+    volumes:
+      - db-node-2-data:/var/lib/mysql
+      - ./init.sql:/data/application/init.sql
+
+
+  proxysql:
+    build:
+      context: proxysql
+      dockerfile: Dockerfile
+    container_name: proxysql
+    command: >
+      --initial
+    volumes:
+      - proxysql-data:/var/lib/proxysql
+    healthcheck:
+      test: "/usr/bin/mysql --user=stud --password=stud --execute \"SHOW DATABASES;\""
+      timeout: 20s
+      retries: 5
+    networks:
+      - arch-network
+    ports:
+      # Mysql Client Port
+      - "6033:6033"
+      # Mysql Admin Port
+      - "6032:6032"
+    depends_on:
+      db-node-1:
+        condition: service_healthy
+      db-node-2:
+        condition: service_healthy
 
   user_service:
     build:
@@ -37,8 +94,8 @@ services:
       dockerfile: Dockerfile
     container_name: user_service
     environment:
-      - DB_HOST=db-node
-      - DB_PORT=3306
+      - DB_HOST=proxysql
+      - DB_PORT=6033
       - DB_LOGIN=stud
       - DB_PASSWORD=stud
       - DB_DATABASE=service_db
@@ -52,7 +109,7 @@ services:
     networks:
       - arch-network
     depends_on:
-      db-node:
+      proxysql:
         condition: service_healthy
         
   services_service:
@@ -61,8 +118,8 @@ services:
       dockerfile: Dockerfile
     container_name: services_service
     environment:
-      - DB_HOST=db-node
-      - DB_PORT=3306
+      - DB_HOST=proxysql
+      - DB_PORT=6033
       - DB_LOGIN=stud
       - DB_PASSWORD=stud
       - DB_DATABASE=service_db
@@ -76,7 +133,7 @@ services:
     networks:
       - arch-network
     depends_on:
-      db-node:
+      proxysql:
         condition: service_healthy
       user_service:
         condition: service_healthy
@@ -87,8 +144,8 @@ services:
       dockerfile: Dockerfile
     container_name: order_service
     environment:
-      - DB_HOST=db-node
-      - DB_PORT=3306
+      - DB_HOST=proxysql
+      - DB_PORT=6033
       - DB_LOGIN=stud
       - DB_PASSWORD=stud
       - DB_DATABASE=service_db
@@ -102,7 +159,7 @@ services:
     networks:
       - arch-network
     depends_on:
-      db-node:
+      proxysql:
         condition: service_healthy
       user_service:
         condition: service_healthy
@@ -115,8 +172,8 @@ services:
       dockerfile: Dockerfile
     container_name: chat_service
     environment:
-      - DB_HOST=db-node
-      - DB_PORT=3306
+      - DB_HOST=proxysql
+      - DB_PORT=6033
       - DB_LOGIN=stud
       - DB_PASSWORD=stud
       - DB_DATABASE=service_db
@@ -130,14 +187,16 @@ services:
     networks:
       - arch-network
     depends_on:
-      db-node:
+      proxysql:
         condition: service_healthy
       user_service:
         condition: service_healthy
       order_service:
         condition: service_healthy
 volumes:
-  db-node-data:
+  db-node-1-data:
+  db-node-2-data:
+  proxysql-data:
 
 networks:
   arch-network:
