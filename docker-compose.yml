@@ -13,9 +13,6 @@ services:
       MYSQL_PASSWORD: stud
       MYSQL_ROOT_PASSWORD: '1'
     command: >
-      --sql-mode='STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'
-      --general-log=ON
-      --log-queries-not-using-indexes=ON
       --init-file /data/application/init.sql
       --character-set-server=utf8mb4
     networks:
@@ -43,15 +40,12 @@ services:
       MYSQL_PASSWORD: stud
       MYSQL_ROOT_PASSWORD: '1'
     command: >
-      --sql-mode='STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'
-      --general-log=ON
-      --log-queries-not-using-indexes=ON
       --init-file /data/application/init.sql
       --character-set-server=utf8mb4
     networks:
       - arch-network
     ports:
-      - 3360:3306
+      - 3361:3306
     healthcheck:
       test: "/usr/bin/mariadb --user=stud --password=stud --execute \"SHOW DATABASES;\""
       interval: 15s
@@ -72,7 +66,7 @@ services:
     volumes:
       - proxysql-data:/var/lib/proxysql
     healthcheck:
-      test: "/usr/bin/mysql --user=stud --password=stud --execute \"SHOW DATABASES;\""
+      test: "mysql --user=admin --password=admin -h 127.0.0.1 --port=6032 --execute \"SHOW DATABASES;\""
       timeout: 20s
       retries: 5
     networks:
@@ -99,6 +93,7 @@ services:
       - DB_LOGIN=stud
       - DB_PASSWORD=stud
       - DB_DATABASE=service_db
+      - SHARDS_COUNT=2
     ports:
       - 8081:8081
     healthcheck:
@@ -123,6 +118,7 @@ services:
       - DB_LOGIN=stud
       - DB_PASSWORD=stud
       - DB_DATABASE=service_db
+      - SHARDS_COUNT=2
     ports:
       - 8082:8082
     healthcheck:
@@ -149,6 +145,7 @@ services:
       - DB_LOGIN=stud
       - DB_PASSWORD=stud
       - DB_DATABASE=service_db
+      - SHARDS_COUNT=2
     ports:
       - 8083:8083
     healthcheck:
@@ -177,6 +174,7 @@ services:
       - DB_LOGIN=stud
       - DB_PASSWORD=stud
       - DB_DATABASE=service_db
+      - SHARDS_COUNT=2
     ports:
       - 8084:8084
     healthcheck:
