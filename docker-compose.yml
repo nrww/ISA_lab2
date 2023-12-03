@@ -82,6 +82,20 @@ services:
       db-node-2:
         condition: service_healthy
 
+  cache:
+    build:
+      context: redis
+      dockerfile: Dockerfile
+    container_name: redis
+    restart: always
+    ports:
+      - '6379:6379'
+    command: redis-server --save 20 1 --loglevel warning 
+    networks:
+      - arch-network
+    volumes: 
+      - cache:/data
+
   user_service:
     build:
       context: user_service
@@ -94,6 +108,7 @@ services:
       - DB_PASSWORD=stud
       - DB_DATABASE=service_db
       - SHARDS_COUNT=2
+      - CACHE=cache:6379
     ports:
       - 8081:8081
     healthcheck:
@@ -106,6 +121,10 @@ services:
     depends_on:
       proxysql:
         condition: service_healthy
+      cache:
+        condition: service_started
+  
+
         
   services_service:
     build:
@@ -119,6 +138,7 @@ services:
       - DB_PASSWORD=stud
       - DB_DATABASE=service_db
       - SHARDS_COUNT=2
+      - CACHE=cache:6379
     ports:
       - 8082:8082
     healthcheck:
@@ -146,6 +166,7 @@ services:
       - DB_PASSWORD=stud
       - DB_DATABASE=service_db
       - SHARDS_COUNT=2
+      - CACHE=cache:6379
     ports:
       - 8083:8083
     healthcheck:
@@ -163,6 +184,7 @@ services:
       services_service:
         condition: service_healthy
 
+
   chat_service:
     build:
       context: chat_service
@@ -175,6 +197,7 @@ services:
       - DB_PASSWORD=stud
       - DB_DATABASE=service_db
       - SHARDS_COUNT=2
+      - CACHE=cache:6379
     ports:
       - 8084:8084
     healthcheck:
@@ -195,6 +218,7 @@ volumes:
   db-node-1-data:
   db-node-2-data:
   proxysql-data:
+  cache:
 
 networks:
   arch-network:
